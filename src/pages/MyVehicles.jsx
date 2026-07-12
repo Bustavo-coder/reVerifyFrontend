@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMyVehicles } from '../services/api'
 import Layout from '../components/Layout'
 import toast from 'react-hot-toast'
-import '../styles/dashboard.css'
 
 export default function MyVehicles() {
   const navigate = useNavigate()
@@ -15,40 +13,34 @@ export default function MyVehicles() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      navigate('/')
+      navigate('/login')
       return
     }
 
-    const fetchVehicles = async () => {
-      try {
-        const res = await getMyVehicles()
-        setVehicles(res.data || [])
-      } catch (err) {
-        console.error('Failed to load vehicles', err)
-        toast.error('Could not load vehicles')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchVehicles()
+    // Read vehicles from localStorage (saved on registration)
+    // Backend has no "get my vehicles" endpoint yet
+    const storageKey = `my_vehicles_${user?.id}`
+    const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
+    setVehicles(stored)
+    setLoading(false)
   }, [navigate])
 
   return (
     <Layout role={user?.role}>
-      <div className="content-wrapper">
-        <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="space-y-6 animate-fadeIn">
+        
+        {/* HEADER */}
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
               My Vehicles
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+            <p className="text-sm text-slate-400 font-semibold mt-1">
               Manage all the vehicles registered to your profile.
             </p>
           </div>
           <button 
-            className="premium-btn" 
-            style={{ padding: '10px 20px', minHeight: 'auto', width: 'auto' }}
+            className="px-4 py-2.5 bg-brand-primary hover:bg-brand-medium text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-[0.98]"
             onClick={() => navigate('/register-vehicle')}
           >
             + Register New Vehicle
@@ -56,62 +48,62 @@ export default function MyVehicles() {
         </header>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          <div className="text-center py-12 text-sm text-slate-400 font-semibold">
             Loading vehicles...
           </div>
         ) : vehicles.length === 0 ? (
-          <div className="stat-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚗</div>
-            <h3>No Vehicles Found</h3>
-            <p className="text-secondary" style={{ marginBottom: '1.5rem' }}>
-              You have not registered any vehicles yet.
-            </p>
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center max-w-md mx-auto space-y-5 shadow-sm">
+            <div className="text-5xl">🚗</div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-lg">No Vehicles Found</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-1">
+                You have not registered any vehicles yet in this session.
+              </p>
+            </div>
             <button 
-              className="premium-btn" 
-              style={{ width: 'auto', margin: '0 auto' }}
+              className="px-5 py-3 bg-brand-primary hover:bg-brand-medium text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-[0.98] inline-block"
               onClick={() => navigate('/register-vehicle')}
             >
               Register Your First Vehicle
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', animation: 'slideUp 0.4s ease-out' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {vehicles.map((v) => (
-              <div key={v.id} className="premium-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div key={v.id} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4 hover:border-brand-primary/20 transition-all flex flex-col justify-between">
+                
+                <div className="flex justify-between items-start gap-2">
                   <div>
-                    <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem', color: 'var(--text-main)' }}>{v.plateNumber}</h2>
-                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    <h2 className="text-lg font-black text-slate-900 leading-tight">{v.plateNumber}</h2>
+                    <div className="text-xs text-slate-400 font-semibold mt-0.5">
                       {v.make} {v.model} • {v.year}
                     </div>
                   </div>
-                  <div style={{ padding: '0.35rem 0.75rem', background: 'var(--accent-green-soft)', color: 'var(--accent-green)', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-full text-[10px] font-bold">
                     {v.color}
+                  </span>
+                </div>
+
+                <div className="w-full text-xs text-slate-500 space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-150">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">VIN:</span>
+                    <span className="font-semibold text-slate-800 font-mono truncate max-w-[150px]">{v.vin}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Type:</span>
+                    <span className="font-semibold text-slate-800">{v.vehicleType || 'N/A'}</span>
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--bg-main)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-light)', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>VIN:</span>
-                    <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>{v.vin}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Type:</span>
-                    <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>{v.vehicleType || 'N/A'}</span>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 'auto', display: 'flex', gap: '0.75rem' }}>
+                <div className="flex gap-2 pt-2">
                   <button 
-                    className="premium-btn" 
-                    style={{ flex: 1, padding: '10px', fontSize: '0.85rem', minHeight: 'auto' }}
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold rounded-xl text-xs transition-all"
                     onClick={() => navigate('/driver')}
                   >
                     View Dashboard
                   </button>
                   <button 
-                    className="premium-btn" 
-                    style={{ flex: 1, padding: '10px', fontSize: '0.85rem', minHeight: 'auto', background: 'var(--text-main)' }}
+                    className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-medium text-white font-bold rounded-xl text-xs transition-all shadow-sm shadow-brand-primary/10"
                     onClick={() => navigate('/add-document', { state: { vehicleId: v.id } })}
                   >
                     Add Document

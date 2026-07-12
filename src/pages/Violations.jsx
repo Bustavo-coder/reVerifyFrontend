@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getViolations, payViolation } from '../services/api'
+import { getViolations, payViolation } from './services/api'
 import Layout from '../components/Layout'
 import toast from 'react-hot-toast'
-import '../styles/dashboard.css'
 
 export default function Violations() {
   const [violations, setViolations] = useState([])
@@ -41,60 +40,70 @@ export default function Violations() {
 
   return (
     <Layout role={user?.role}>
-      <div className="content-wrapper">
-        <header style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
+      <div className="space-y-6 animate-fadeIn">
+        
+        {/* HEADER */}
+        <header className="border-b border-slate-200 pb-5">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             My Violations
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          <p className="text-sm text-slate-400 font-semibold mt-1">
             Review and settle any outstanding road penalties.
           </p>
         </header>
 
-        <div className="stat-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-container" style={{ border: 'none' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Offence</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {violations.length > 0 ? violations.map(v => (
-                  <tr key={v.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{v.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ref: #{v.id}00X</div>
+        {/* VIOLATIONS TABLE */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="p-4">Offence</th>
+                <th className="p-4">Date Issued</th>
+                <th className="p-4">Fine Amount</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
+              {violations.length > 0 ? (
+                violations.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-4">
+                      <div className="text-slate-900 font-bold text-sm">{v.title}</div>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">REF: #{v.id}00X</div>
                     </td>
-                    <td>{v.date}</td>
-                    <td>₦{v.amount?.toLocaleString()}</td>
-                    <td>
-                      <span className={`card-status ${v.status === 'PAID' ? 'verified' : 'expired'}`}>
+                    <td className="p-4 text-slate-500 text-xs">{new Date(v.date).toLocaleDateString()}</td>
+                    <td className="p-4 text-slate-900 font-black text-sm">₦{v.amount?.toLocaleString()}</td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border ${
+                        v.status === 'PAID'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-rose-50 text-rose-800 border-rose-200'
+                      }`}>
                         {v.status}
                       </span>
                     </td>
-                    <td>
+                    <td className="p-4">
                       {v.status === 'UNPAID' && (
-                        <button className="premium-btn" style={{ padding: '6px 12px', fontSize: '0.7rem', minHeight: 'auto' }} onClick={() => handlePay(v.id)}>
+                        <button
+                          className="px-3 py-1.5 bg-brand-primary hover:bg-brand-medium text-white text-xs font-bold rounded-lg transition-all active:scale-[0.98] shadow-sm"
+                          onClick={() => handlePay(v.id)}
+                        >
                           Pay Fine
                         </button>
                       )}
                     </td>
                   </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                      No violations found. Drive safe!
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="p-12 text-center text-slate-400 font-semibold">
+                    No violations found. Drive safe!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </Layout>

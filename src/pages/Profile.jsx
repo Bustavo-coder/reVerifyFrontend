@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import toast from 'react-hot-toast'
-import '../styles/dashboard.css'
 
 export default function Profile() {
   const user = JSON.parse(localStorage.getItem('user'))
@@ -18,6 +17,9 @@ export default function Profile() {
     e.preventDefault()
     setLoading(true)
     setTimeout(() => {
+      // Simulate profile updates in local storage
+      const updatedUser = { ...user, ...form }
+      localStorage.setItem('user', JSON.stringify(updatedUser))
       toast.success('Profile updated successfully')
       setLoading(false)
     }, 1000)
@@ -25,69 +27,85 @@ export default function Profile() {
 
   return (
     <Layout role={user?.role}>
-      <div className="content-wrapper">
-        <header style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
+      <div className="space-y-6 animate-fadeIn max-w-xl">
+        
+        {/* HEADER */}
+        <header className="border-b border-slate-200 pb-5">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             My Profile
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          <p className="text-sm text-slate-400 font-semibold mt-1">
             Manage your personal information and identity credentials.
           </p>
         </header>
 
-        <div className="stat-card" style={{ maxWidth: '600px' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'block' }}>First Name</label>
+        {/* PROFILE CARD */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* First Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">First Name</label>
                 <input 
-                  className="premium-input" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
                   value={form.firstName} 
                   onChange={(e) => setForm({...form, firstName: e.target.value})}
+                  required
                 />
               </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'block' }}>Last Name</label>
+              {/* Last Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Last Name</label>
                 <input 
-                  className="premium-input" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
                   value={form.lastName} 
                   onChange={(e) => setForm({...form, lastName: e.target.value})}
+                  required
                 />
               </div>
             </div>
 
-            <div className="form-group">
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'block' }}>Email Address</label>
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address</label>
               <input 
-                className="premium-input" 
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
                 type="email"
                 value={form.email} 
                 onChange={(e) => setForm({...form, email: e.target.value})}
+                required
               />
             </div>
 
-            <div className="form-group">
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'block' }}>Phone Number</label>
+            {/* Phone Number */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number</label>
               <input 
-                className="premium-input" 
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
                 value={form.phoneNumber} 
                 onChange={(e) => setForm({...form, phoneNumber: e.target.value})}
+                required
               />
             </div>
 
-            <div className="form-group">
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'block' }}>National Identity Number (NIN)</label>
+            {/* NIN (Read Only) */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">National Identity Number (NIN)</label>
               <input 
-                className="premium-input" 
+                className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono text-sm cursor-not-allowed opacity-75 outline-none"
                 value={form.nin} 
                 disabled
-                style={{ opacity: 0.7, cursor: 'not-allowed' }}
               />
-              <small style={{ color: 'var(--text-muted)' }}>NIN cannot be changed once verified.</small>
+              <p className="text-[10px] text-slate-400 font-semibold">NIN cannot be modified once verified against the National database.</p>
             </div>
 
-            <button className="premium-btn" type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Update Profile'}
+            <button 
+              className="w-full py-3.5 bg-brand-primary hover:bg-brand-medium text-white font-bold rounded-xl transition-all shadow-md shadow-brand-primary/10 hover:shadow-lg active:scale-[0.98] text-sm pt-3"
+              type="submit" 
+              disabled={loading}
+            >
+              {loading ? 'Saving Changes...' : 'Update Profile'}
             </button>
           </form>
         </div>

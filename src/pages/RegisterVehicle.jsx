@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { registerVehicle, verifyPlateNumberExternal } from '../services/api'
+import { registerVehicle, verifyPlateNumberExternal } from './services/api'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import toast from 'react-hot-toast'
-import '../styles/dashboard.css'
 
 export default function RegisterVehicle() {
   const navigate = useNavigate()
@@ -59,7 +58,7 @@ export default function RegisterVehicle() {
     setLoading(true)
 
     try {
-      await registerVehicle({
+      const res = await registerVehicle({
         ...form,
         plateNumber: form.plateNumber.trim().toUpperCase(),
         vin: form.vin.trim().toUpperCase(),
@@ -69,11 +68,22 @@ export default function RegisterVehicle() {
         year: Number(form.year)
       })
 
+      // Persist vehicle to localStorage so DriverDashboard can list it
+      // (backend has no "get my vehicles" endpoint yet)
+      const storageKey = `my_vehicles_${user?.id}`
+      const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      const newVehicle = res.data
+      const alreadyExists = existing.some(v => v.id === newVehicle.id)
+      if (!alreadyExists) {
+        localStorage.setItem(storageKey, JSON.stringify([...existing, newVehicle]))
+      }
+
       toast.success('Vehicle registered successfully 🚗')
       setTimeout(() => { navigate('/driver') }, 1500)
 
     } catch (err) {
       console.error(err)
+      toast.error(err?.response?.data?.message || 'Registration failed')
     } finally {
       setLoading(false)
     }
@@ -81,23 +91,28 @@ export default function RegisterVehicle() {
 
   return (
     <Layout role={user?.role}>
-      <div className="content-wrapper">
-        <header style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
+      <div className="space-y-6 animate-fadeIn max-w-2xl">
+        
+        {/* HEADER */}
+        <header className="border-b border-slate-200 pb-5">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Register New Vehicle
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          <p className="text-sm text-slate-400 font-semibold mt-1">
             Provide accurate details or use FRSC Verify to auto-fill your record.
           </p>
         </header>
 
-        <section className="stat-card" style={{ animation: 'slideUp 0.4s ease-out' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Plate Number</label>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        {/* REGISTRATION FORM CARD */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Plate Number & Verify button */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Plate Number</label>
+              <div className="flex gap-2">
                 <input
-                  className="premium-input"
+                  className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-bold font-mono text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all uppercase"
                   name="plateNumber"
                   placeholder="e.g. ABC-123-XY"
                   value={form.plateNumber}
@@ -106,8 +121,7 @@ export default function RegisterVehicle() {
                 />
                 <button 
                   type="button" 
-                  className="premium-btn" 
-                  style={{ background: 'var(--text-main)', whiteSpace: 'nowrap' }}
+                  className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 whitespace-nowrap"
                   onClick={handleVerifyFRSC}
                   disabled={verifying}
                 >
@@ -116,52 +130,110 @@ export default function RegisterVehicle() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>VIN / Chassis Number</label>
-              <input className="premium-input" name="vin" placeholder="17-digit VIN" value={form.vin} onChange={handleChange} required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* VIN / Chassis Number */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">VIN / Chassis Number</label>
+                <input 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all uppercase"
+                  name="vin" 
+                  placeholder="17-digit VIN" 
+                  value={form.vin} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Manufacturer */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Manufacturer</label>
+                <input 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                  name="manufacturer" 
+                  placeholder="e.g. Toyota" 
+                  value={form.manufacturer} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Model */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Model</label>
+                <input 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                  name="model" 
+                  placeholder="e.g. Camry" 
+                  value={form.model} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Year */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Year</label>
+                <input 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                  type="number" 
+                  name="year" 
+                  placeholder="YYYY" 
+                  value={form.year} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Color */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Color</label>
+                <input 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
+                  name="color" 
+                  placeholder="e.g. Silver" 
+                  value={form.color} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+
+              {/* Vehicle Type */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Vehicle Type</label>
+                <select 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all cursor-pointer"
+                  name="vehicleType" 
+                  value={form.vehicleType} 
+                  onChange={handleChange} 
+                  required
+                >
+                  <option value="">Select vehicle type...</option>
+                  <option value="CAR">Private Car</option>
+                  <option value="BUS">Commercial Bus</option>
+                  <option value="TRUCK">Heavy Duty Truck</option>
+                  <option value="MOTORCYCLE">Motorcycle</option>
+                </select>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Manufacturer</label>
-              <input className="premium-input" name="manufacturer" placeholder="e.g. Toyota" value={form.manufacturer} onChange={handleChange} required />
-            </div>
-
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Model</label>
-              <input className="premium-input" name="model" placeholder="e.g. Camry" value={form.model} onChange={handleChange} required />
-            </div>
-
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Year</label>
-              <input className="premium-input" type="number" name="year" placeholder="YYYY" value={form.year} onChange={handleChange} required />
-            </div>
-
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Color</label>
-              <input className="premium-input" name="color" placeholder="e.g. Silver" value={form.color} onChange={handleChange} required />
-            </div>
-
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem' }}>Vehicle Type</label>
-              <select className="premium-input" name="vehicleType" value={form.vehicleType} onChange={handleChange} required style={{ width: '100%' }}>
-                <option value="">Select vehicle type...</option>
-                <option value="CAR">Private Car</option>
-                <option value="BUS">Commercial Bus</option>
-                <option value="TRUCK">Heavy Duty Truck</option>
-                <option value="MOTORCYCLE">Motorcycle</option>
-              </select>
-            </div>
-
-            <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <button className="premium-btn" type="submit" disabled={loading} style={{ flex: 1, padding: '14px' }}>
+            <div className="flex flex-col sm:flex-row gap-3 pt-3">
+              <button 
+                className="flex-1 py-3.5 bg-brand-primary hover:bg-brand-medium text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-brand-primary/10 hover:shadow-lg active:scale-[0.98]"
+                type="submit" 
+                disabled={loading}
+              >
                 {loading ? 'Registering...' : 'Complete Registration'}
               </button>
-              <button className="premium-btn" type="button" onClick={() => navigate('/driver')} style={{ background: '#f1f5f9', color: 'var(--text-secondary)', flex: 1 }}>
+              <button 
+                className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold rounded-xl text-sm transition-all"
+                type="button" 
+                onClick={() => navigate('/driver')}
+              >
                 Cancel
               </button>
             </div>
           </form>
-        </section>
+        </div>
       </div>
     </Layout>
   )

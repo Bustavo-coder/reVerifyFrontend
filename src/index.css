@@ -1,4 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-dark: #022c22;
+  --color-brand-primary: #064e3b;
+  --color-brand-medium: #065f46;
+  --color-brand-light: #0f766e;
+  --color-brand-accent: #10b981;
+  --color-text-main: #2d3a2c;
+  --color-text-secondary: #4a5d48;
+  --color-text-muted: #6b7c6a;
+  --color-bg-body: #f8fafc;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 
 :root {
   /* Global Design Tokens */
@@ -56,3 +71,33 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-green-dim);
 }
+
+/* GLOBAL LOADER */
+.global-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.loader-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--accent-green-glow);
+  border-top: 4px solid var(--accent-green);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+

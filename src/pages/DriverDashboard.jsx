@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMyVehicles, getMyViolations, getMyDocuments, getDocumentsByVehicleId } from '../services/api'
+import { getDriverProfile, getDocumentsByVehicleId } from './services/api'
 import Layout from '../components/Layout'
 import toast from 'react-hot-toast'
-import '../styles/dashboard.css'
 
 const documentTypes = [
   { type: 'VEHICLE_LICENSE', label: 'Vehicle License', icon: '🪪' },
@@ -29,20 +28,29 @@ export default function DriverDashboard() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      navigate('/')
+      navigate('/login')
       return
     }
 
     const fetchDashboardData = async () => {
       try {
-        const [vehiclesRes, violationsRes, docsRes] = await Promise.all([
-          getMyVehicles(),
-          getMyViolations(),
-          getMyDocuments().catch(() => ({ data: [] })) // Handle case where this endpoint might fail gracefully
-        ])
-        setMyVehicles(vehiclesRes.data || [])
-        setMyViolations(violationsRes.data || [])
-        setMyDocuments(docsRes.data || [])
+        const storageKey = `my_vehicles_${user?.id}`
+        const storedVehicles = JSON.parse(localStorage.getItem(storageKey) || '[]')
+        setMyVehicles(storedVehicles)
+
+        if (user?.id) {
+          await getDriverProfile(user.id)
+          if (storedVehicles.length > 0) {
+            const allDocsResults = await Promise.allSettled(
+              storedVehicles.map(v => getDocumentsByVehicleId(v.id))
+            )
+            const allDocs = allDocsResults
+              .filter(r => r.status === 'fulfilled')
+              .flatMap(r => r.value.data || [])
+            setMyDocuments(allDocs)
+          }
+        }
+        setMyViolations([])
       } catch (err) {
         console.error('Failed to load dashboard data', err)
       }
@@ -78,10 +86,10 @@ export default function DriverDashboard() {
 
   const getDocStatus = (type) => {
     const doc = documents.find(d => d.documentType === type)
-    if (!doc) return { status: 'pending', label: 'Not submitted', tick: '—', data: null }
-    if (doc.status === 'VERIFIED') return { status: 'verified', label: 'Verified', tick: '✓', data: doc }
-    if (doc.status === 'EXPIRED') return { status: 'expired', label: 'Expired', tick: '✗', data: doc }
-    return { status: 'pending', label: 'Pending review', tick: '⏳', data: doc }
+    if (!doc) return { status: 'pending', label: 'Not submitted', style: 'bg-slate-100 text-slate-600 border-slate-200', data: null }
+    if (doc.status === 'VERIFIED') return { status: 'verified', label: 'Verified', style: 'bg-emerald-50 text-emerald-800 border-emerald-250', data: doc }
+    if (doc.status === 'EXPIRED') return { status: 'expired', label: 'Expired', style: 'bg-rose-50 text-rose-800 border-rose-250', data: doc }
+    return { status: 'pending', label: 'Pending review', style: 'bg-amber-50 text-amber-800 border-amber-250', data: doc }
   }
 
   const totalVerified = myDocuments.filter(d => d.status === 'VERIFIED').length
@@ -90,104 +98,118 @@ export default function DriverDashboard() {
 
   return (
     <Layout role="DRIVER">
-      <div className="content-wrapper">
-        <header style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            Welcome, {user?.firstName}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            RoadCheck Nigeria • Secure Document Hub
-          </p>
+      <div className="space-y-8 animate-fadeIn">
+        
+        {/* HEADER */}
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Welcome, {user?.firstName}
+            </h1>
+            <p className="text-sm text-slate-400 font-semibold mt-1">
+              RoadCheck Nigeria • Secure Document Hub
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => navigate('/register-vehicle')}
+              className="px-4 py-2.5 bg-brand-primary hover:bg-brand-medium text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-[0.98]"
+            >
+              + Register Vehicle
+            </button>
+          </div>
         </header>
 
         {/* QUICK STATS */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-value">{totalVerified}</div>
-            <div className="stat-label">Verified Documents</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm hover:border-emerald-500/30 transition-all">
+            <div className="text-3xl font-black text-slate-900">{totalVerified}</div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Verified Documents</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{totalVehicles}</div>
-            <div className="stat-label">Registered Vehicles</div>
+          <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm hover:border-emerald-500/30 transition-all">
+            <div className="text-3xl font-black text-slate-900">{totalVehicles}</div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Registered Vehicles</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{activeViolationsCount}</div>
-            <div className="stat-label">Active Violations</div>
+          <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm hover:border-emerald-500/30 transition-all">
+            <div className="text-3xl font-black text-slate-900">{activeViolationsCount}</div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Active Violations</div>
           </div>
         </div>
 
-        {/* SEARCH PANEL */}
-        <section className="search-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-          <div className="search-panel-content">
-            <div className="search-header">
-              <h3>Select Vehicle</h3>
-              <p className="text-secondary" style={{ fontSize: '0.85rem' }}>Choose a registered vehicle to view its compliance status.</p>
-            </div>
-            <div className="search-box">
-              <select
-                className="premium-input"
-                value={selectedVehicleId}
-                onChange={(e) => handleSelectVehicle(e.target.value)}
-                style={{ width: '100%' }}
-                disabled={myVehicles.length === 0}
-              >
-                <option value="">-- {myVehicles.length === 0 ? 'No vehicles registered' : 'Select a vehicle'} --</option>
-                {myVehicles.map(v => (
-                  <option key={v.id} value={v.id}>{v.plateNumber} ({v.make} {v.model})</option>
-                ))}
-              </select>
-            </div>
+        {/* VEHICLE SELECTOR PANEL */}
+        <section className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Select Active Vehicle</h3>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">Select a registered vehicle to audit its compliance credentials.</p>
+          </div>
+          <div className="relative">
+            <select
+              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold text-sm focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all cursor-pointer"
+              value={selectedVehicleId}
+              onChange={(e) => handleSelectVehicle(e.target.value)}
+              disabled={myVehicles.length === 0}
+            >
+              <option value="">-- {myVehicles.length === 0 ? 'No vehicles registered' : 'Select a vehicle'} --</option>
+              {myVehicles.map(v => (
+                <option key={v.id} value={v.id}>{v.plateNumber} ({v.make} {v.model})</option>
+              ))}
+            </select>
           </div>
         </section>
 
         {searched && vehicle ? (
-          <div style={{ animation: 'slideUp 0.5s ease-out' }}>
-            <div className="section-title" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2>{vehicle.plateNumber}</h2>
-                <p className="text-secondary">{vehicle.make} {vehicle.model} • {vehicle.color}</p>
+                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">{vehicle.plateNumber}</h2>
+                <p className="text-sm text-slate-400 font-semibold">{vehicle.make} {vehicle.model} • {vehicle.color}</p>
               </div>
               <button 
-                className="premium-btn" 
-                style={{ padding: '8px 16px', fontSize: '0.8rem', minHeight: 'auto' }}
+                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all self-start sm:self-center"
                 onClick={() => navigate('/add-document', { state: { vehicleId: vehicle.id } })}
               >
                 + Add Document
               </button>
             </div>
 
-            <div className="doc-premium-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {documentTypes.map((doc) => {
                 const status = getDocStatus(doc.type)
                 return (
-                  <div key={doc.type} className="premium-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', width: '100%', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div className="card-icon" style={{ marginBottom: 0, fontSize: '1.5rem' }}>{doc.icon}</div>
-                        <div className="card-title" style={{ fontSize: '1.1rem', marginBottom: 0 }}>{doc.label}</div>
+                  <div key={doc.type} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4 hover:border-emerald-500/20 transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{doc.icon}</span>
+                        <span className="font-bold text-slate-950 text-sm">{doc.label}</span>
                       </div>
-                      <div className={`card-status ${status.status}`} style={{ margin: 0 }}>
+                      <span className={`px-2 py-1 rounded-lg text-[9px] font-bold border ${status.style}`}>
                         {status.label}
-                      </div>
+                      </span>
                     </div>
                     
                     {status.data ? (
-                      <div style={{ width: '100%', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-main)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--text-main)' }}>Ref No:</strong> <span>{status.data.documentReferenceNumber}</span>
+                      <div className="w-full text-[11px] text-slate-500 space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-150">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Ref No:</span> 
+                          <span className="font-semibold text-slate-800 truncate max-w-[150px]">{status.data.documentReferenceNumber}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--text-main)' }}>Authority:</strong> <span>{status.data.issuingAuthority}</span>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Authority:</span> 
+                          <span className="font-semibold text-slate-800">{status.data.issuingAuthority}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--text-main)' }}>Issued:</strong> <span>{new Date(status.data.issuedDate).toLocaleDateString()}</span>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Issued:</span> 
+                          <span className="font-semibold text-slate-800">{new Date(status.data.issuedDate).toLocaleDateString()}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--text-main)' }}>Expires:</strong> <span>{new Date(status.data.expiryDate).toLocaleDateString()}</span>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Expires:</span> 
+                          <span className={`font-semibold ${status.status === 'expired' ? 'text-rose-600 font-bold' : 'text-slate-800'}`}>
+                            {new Date(status.data.expiryDate).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     ) : (
-                      <div style={{ width: '100%', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '1.5rem 0', background: 'var(--bg-main)', borderRadius: '8px', border: '1px dashed var(--border-light)' }}>
+                      <div className="w-full text-center py-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 font-semibold">
                         No document uploaded yet.
                       </div>
                     )}
@@ -195,59 +217,43 @@ export default function DriverDashboard() {
                 )
               })}
             </div>
-
-            {myViolations.filter(v => v.vehicle?.id === vehicle.id && v.status === 'UNPAID').length > 0 && (
-              <div style={{ marginTop: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#ef4444' }}>⚠️ Active Violations for this Vehicle</h3>
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  {myViolations.filter(v => v.vehicle?.id === vehicle.id && v.status === 'UNPAID').map(violation => (
-                    <div key={violation.id} className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <strong>{violation.violationType?.name || 'Traffic Violation'}</strong>
-                          <p className="text-secondary" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                            {new Date(violation.issuedAt).toLocaleDateString()} • {violation.location}
-                          </p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>
-                            ₦{violation.fineAmount?.toLocaleString()}
-                          </div>
-                          <button className="premium-btn" style={{ padding: '6px 12px', fontSize: '0.75rem', marginTop: '8px', minHeight: 'auto' }} onClick={() => navigate('/violations')}>
-                            Pay Now
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : searched && (
-          <div className="stat-card" style={{ textAlign: 'center', padding: '3rem' }}>
-            <h3>Vehicle Not Found</h3>
-            <p className="text-secondary">Please select a valid vehicle.</p>
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center max-w-md mx-auto space-y-3">
+            <span className="text-4xl block">🔎</span>
+            <h3 className="font-bold text-slate-850">Vehicle Not Found</h3>
+            <p className="text-xs text-slate-400 font-semibold">Please select a valid registered vehicle.</p>
           </div>
         )}
 
         {!searched && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
-            <div className="stat-card">
-              <h3>Road Safety Tips</h3>
-              <ul style={{ listStyle: 'none', marginTop: '1rem', padding: 0 }}>
-                <li style={{ marginBottom: '10px' }}>✅ Keep your digital documents accessible.</li>
-                <li style={{ marginBottom: '10px' }}>✅ Check insurance validity before long trips.</li>
-                <li style={{ marginBottom: '10px' }}>✅ Report any road safety violations.</li>
+          <div className="grid md:grid-cols-2 gap-6 pt-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Road Safety tips</h3>
+              <ul className="space-y-3 text-xs text-slate-500 font-medium">
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> Keep your digital document database synchronized in this terminal.
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> Set reminders for vehicle insurance and roadworthiness renewals.
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> Flag safety concerns and highway failures directly to officers.
+                </li>
               </ul>
             </div>
-            <div className="stat-card" style={{ background: 'var(--accent-green-soft)', borderColor: 'var(--accent-green)' }}>
-              <h3>Latest Regulation</h3>
-              <p className="text-secondary" style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
-                Federal Ministry of Transport has updated the Proof of Ownership requirements.
-              </p>
-              <button className="premium-btn" style={{ marginTop: '1rem', background: 'var(--text-main)', minHeight: '36px' }} onClick={() => navigate('/laws')}>
-                Read Update
+            <div className="bg-emerald-900 border border-emerald-850 rounded-2xl p-6 shadow-sm text-slate-100 flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">Latest Regulatory Notice</h3>
+                <p className="text-xs text-emerald-100 leading-relaxed mt-2.5 font-medium">
+                  The Federal Ministry of Transport has revised the Proof of Ownership certificates guidelines. All vehicles must renew credentials accordingly.
+                </p>
+              </div>
+              <button 
+                className="px-4 py-2.5 bg-white text-emerald-950 hover:bg-slate-100 text-xs font-bold rounded-xl transition-all self-start mt-4 shadow-sm"
+                onClick={() => navigate('/laws')}
+              >
+                Read Regulations
               </button>
             </div>
           </div>
